@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import confetti from "canvas-confetti";
+import { formatDistanceToNow } from "date-fns";
 
 const standardItems = [
   "Burgers & Buns",
@@ -16,13 +18,26 @@ const standardItems = [
   "Salad / Veggie Tray",
 ];
 
+type ClaimRecord = {
+  item: string;
+  guest_name: string;
+  created_at: string;
+};
+
+type GroupedRSVP = {
+  id: string;
+  guest_name: string;
+  items: string[];
+  created_at: string;
+};
+
 export default function SarionGraduation() {
-  const [claimedItems, setClaimedItems] = useState<{item: string, guest_name: string}[]>([]);
+  const [claimedItems, setClaimedItems] = useState<ClaimRecord[]>([]);
+  const [groupedRSVPs, setGroupedRSVPs] = useState<GroupedRSVP[]>([]);
   const [guestName, setGuestName] = useState("");
-  const [selectedItem, setSelectedItem] = useState("");
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const fetchItems = async () => {
@@ -30,7 +45,32 @@ export default function SarionGraduation() {
       const res = await fetch("/api/items");
       if (res.ok) {
         const data = await res.json();
-        setClaimedItems(data.items || []);
+        const items: ClaimRecord[] = data.items || [];
+        setClaimedItems(items);
+
+        // Group by guest_name and created_at to form RSVP cards
+        const grouped: Record<string, GroupedRSVP> = {};
+        items.forEach((c) => {
+          // Fallback if created_at is missing for old records
+          const timeKey = c.created_at || "old_record"; 
+          const key = `${c.guest_name}_${timeKey}`;
+          if (!grouped[key]) {
+            grouped[key] = {
+              id: key,
+              guest_name: c.guest_name,
+              items: [],
+              created_at: c.created_at || new Date().toISOString(),
+            };
+          }
+          grouped[key].items.push(c.item);
+        });
+
+        // Sort grouped by created_at DESC
+        const sortedGroups = Object.values(grouped).sort((a, b) => {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        setGroupedRSVPs(sortedGroups);
       }
     } catch (e) {
       console.error("Failed to fetch claimed items", e);
@@ -41,33 +81,44 @@ export default function SarionGraduation() {
 
   useEffect(() => {
     fetchItems();
-    // Poll every 5s to keep the list live
     const interval = setInterval(fetchItems, 5000);
     return () => clearInterval(interval);
   }, []);
 
+  const toggleItem = (item: string) => {
+    setSelectedItems((prev) => 
+      prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName || !selectedItem) return;
+    if (!guestName || selectedItems.length === 0) return;
     setSubmitting(true);
     setErrorMsg("");
     try {
       const res = await fetch("/api/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guest_name: guestName, item: selectedItem }),
+        body: JSON.stringify({ guest_name: guestName, items: selectedItems }),
       });
       const data = await res.json();
       if (res.ok) {
-        setSuccessMsg(`Thank you, ${guestName}! We have you down for ${selectedItem}.`);
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#EAB308', '#FFFFFF', '#0B1021'] // Theme colors
+        });
+        
         setGuestName("");
-        setSelectedItem("");
-        fetchItems(); // Refresh list instantly
+        setSelectedItems([]);
+        fetchItems(); 
       } else {
-        setErrorMsg(data.error || "Failed to claim item.");
+        setErrorMsg(data.error || "Failed to claim items.");
       }
     } catch (e) {
-      console.error("Failed to claim item", e);
+      console.error("Failed to claim items", e);
       setErrorMsg("An unexpected error occurred.");
     } finally {
       setSubmitting(false);
@@ -75,97 +126,95 @@ export default function SarionGraduation() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 md:p-8 bg-[#0b1021]">
-      <div 
-        className="relative w-full max-w-4xl max-h-[95vh] overflow-y-auto rounded-3xl bg-[#0b1021] border border-white/10 shadow-2xl"
-      >
-        {/* Banner Image */}
-        <div className="relative w-full h-64 md:h-80 overflow-hidden rounded-t-3xl border-b border-white/10">
-          <Image 
-            src="/sarion_graduation_banner.png" 
-            alt="Sarion Graduation" 
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0b1021] to-transparent"></div>
-          <div className="absolute bottom-6 left-8">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
-              Sarion's Graduation Party
-            </h1>
-            <p className="text-xl text-yellow-300 mt-2 font-medium drop-shadow-md">What are you bringing?</p>
-          </div>
-        </div>
-
-        <div className="p-8">
-          {successMsg ? (
-            <div className="bg-emerald-500/20 border border-emerald-500/50 rounded-2xl p-8 text-center">
-              <div className="text-5xl mb-4">🎉</div>
-              <h2 className="text-2xl font-bold text-white mb-2">Awesome!</h2>
-              <p className="text-emerald-200 text-lg">{successMsg}</p>
-              <button 
-                onClick={() => setSuccessMsg("")}
-                className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white font-medium transition-colors"
-              >
-                Bring something else?
-              </button>
+    <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30">
+      <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        {/* Left Column: Form & Selection */}
+        <div className="lg:col-span-7 relative w-full overflow-hidden rounded-3xl bg-[#111827] border border-white/10 shadow-2xl">
+          {/* Banner Image */}
+          <div className="relative w-full h-64 md:h-80 overflow-hidden border-b border-white/10">
+            <Image 
+              src="/sarion_graduation_banner.png" 
+              alt="Sarion Graduation" 
+              fill
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/40 to-transparent"></div>
+            <div className="absolute bottom-6 left-8 right-8">
+              <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
+                Sarion's Graduation Party
+              </h1>
+              <p className="text-xl text-yellow-400 mt-2 font-medium drop-shadow-md">What are you bringing?</p>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+          </div>
+
+          <div className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
               {errorMsg && (
-                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-200">
+                <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-red-200">
                   {errorMsg}
                 </div>
               )}
               
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <label className="text-sm font-semibold text-white/70 uppercase tracking-wider">Your Name</label>
                 <input 
                   type="text" 
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
                   placeholder="Enter your name..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all text-lg"
                   required
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-white/70 uppercase tracking-wider">Select an Item to Bring</label>
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <label className="text-sm font-semibold text-white/70 uppercase tracking-wider">Select Items to Bring</label>
+                  <span className="text-xs text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full font-medium">
+                    {claimedItems.length} / {standardItems.length} Claimed
+                  </span>
+                </div>
+
                 {loading ? (
-                  <div className="text-white/50 animate-pulse py-4">Loading the list...</div>
+                  <div className="text-white/50 animate-pulse py-8 text-center bg-white/5 rounded-xl">Loading the checklist...</div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {standardItems.map((item) => {
                       const claimRecord = claimedItems.find(c => c.item === item);
                       const isClaimed = !!claimRecord;
-                      const isSelected = selectedItem === item;
+                      const isSelected = selectedItems.includes(item);
 
                       return (
                         <div 
                           key={item}
-                          onClick={() => !isClaimed && setSelectedItem(item)}
+                          onClick={() => !isClaimed && toggleItem(item)}
                           className={`
-                            relative overflow-hidden rounded-xl border p-4 transition-all duration-200
+                            relative overflow-hidden rounded-xl border p-4 transition-all duration-300
                             ${isClaimed 
-                              ? 'bg-white/5 border-white/5 cursor-not-allowed opacity-50' 
+                              ? 'bg-white/5 border-white/5 cursor-not-allowed opacity-40' 
                               : isSelected 
-                                ? 'bg-yellow-500/20 border-yellow-500 cursor-pointer shadow-[0_0_15px_rgba(234,179,8,0.2)]'
-                                : 'bg-white/5 border-white/10 hover:border-white/30 cursor-pointer hover:bg-white/10'
+                                ? 'bg-yellow-500/20 border-yellow-500 cursor-pointer shadow-[0_0_20px_rgba(234,179,8,0.15)] transform scale-[1.02]'
+                                : 'bg-white/5 border-white/10 hover:border-white/30 cursor-pointer hover:bg-white/10 hover:scale-[1.01]'
                             }
                           `}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={`font-medium ${isClaimed ? 'text-white/50 line-through' : 'text-white'}`}>
+                            <span className={`font-semibold ${isClaimed ? 'text-white/40 line-through' : 'text-white'}`}>
                               {item}
                             </span>
                             {isClaimed && (
                               <span className="text-xs bg-white/10 text-white/70 px-2 py-1 rounded-md">
-                                Claimed by {claimRecord.guest_name}
+                                {claimRecord.guest_name}
                               </span>
                             )}
                             {isSelected && (
-                              <div className="w-4 h-4 rounded-full bg-yellow-500 shrink-0" />
+                              <div className="w-5 h-5 rounded-full bg-yellow-500 shrink-0 flex items-center justify-center shadow-lg shadow-yellow-500/50">
+                                <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -177,14 +226,75 @@ export default function SarionGraduation() {
 
               <button 
                 type="submit" 
-                disabled={!guestName || !selectedItem || submitting}
-                className="w-full mt-6 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold text-lg py-4 rounded-xl shadow-lg transition-all"
+                disabled={!guestName || selectedItems.length === 0 || submitting}
+                className="w-full relative overflow-hidden group bg-gradient-to-r from-yellow-600 to-yellow-400 disabled:from-white/10 disabled:to-white/5 disabled:text-white/30 disabled:cursor-not-allowed text-black font-extrabold text-lg py-5 rounded-2xl shadow-xl transition-all"
               >
-                {submitting ? 'Confirming...' : 'Confirm My Item'}
+                <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-out disabled:hidden"></div>
+                <span className="relative z-10">
+                  {submitting ? 'Confirming...' : `Confirm ${selectedItems.length > 0 ? selectedItems.length : ''} ${selectedItems.length === 1 ? 'Item' : 'Items'}`}
+                </span>
               </button>
             </form>
-          )}
+          </div>
         </div>
+
+        {/* Right Column: Live Feed */}
+        <div className="lg:col-span-5 flex flex-col h-full max-h-[90vh]">
+          <div className="flex items-center justify-between mb-6 px-2">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+              </span>
+              Live RSVPs
+            </h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-10 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {groupedRSVPs.length === 0 && !loading && (
+              <div className="text-center p-10 bg-white/5 border border-white/5 rounded-2xl">
+                <p className="text-white/40 font-medium">No RSVPs yet. Be the first!</p>
+              </div>
+            )}
+            
+            {groupedRSVPs.map((rsvp, index) => {
+              let timeString = "";
+              try {
+                timeString = formatDistanceToNow(new Date(rsvp.created_at), { addSuffix: true });
+              } catch (e) {
+                timeString = "Recently";
+              }
+
+              // Animate only the newest one subtly
+              const isNewest = index === 0 && new Date().getTime() - new Date(rsvp.created_at).getTime() < 10000;
+
+              return (
+                <div 
+                  key={rsvp.id}
+                  className={`
+                    p-5 rounded-2xl backdrop-blur-md transition-all duration-500
+                    ${isNewest ? 'bg-yellow-500/10 border border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.15)]' : 'bg-white/5 border border-white/10'}
+                  `}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-lg text-white">{rsvp.guest_name}</h3>
+                    <span className="text-xs font-medium text-white/40 bg-black/20 px-2 py-1 rounded-lg">
+                      {timeString}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {rsvp.items.map(item => (
+                      <span key={item} className={`text-sm px-3 py-1 rounded-full ${isNewest ? 'bg-yellow-500/20 text-yellow-200' : 'bg-white/10 text-white/80'}`}>
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ export async function GET() {
       )
     `);
 
-    const result = await pool.query('SELECT guest_name, item FROM graduation_rsvp');
+    const result = await pool.query('SELECT guest_name, item, created_at FROM graduation_rsvp ORDER BY created_at DESC');
     return NextResponse.json({ items: result.rows });
   } catch (error) {
     console.error('Failed to fetch items:', error);

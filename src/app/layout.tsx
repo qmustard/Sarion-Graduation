@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Sarion's Graduation",
-  description: "Celebrating Sarion's graduation",
+  description: "RSVP and checklist for Sarion's Graduation Party",
 };
 
 export default function RootLayout({
