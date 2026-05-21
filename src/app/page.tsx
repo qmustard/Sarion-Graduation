@@ -50,17 +50,17 @@ export default function SarionGraduation() {
         const items: ClaimRecord[] = data.items || [];
         setClaimedItems(items);
 
-        // Group by guest_name and created_at to form RSVP cards
+        // Group by guest_name to form RSVP cards (1 card per user)
         const grouped: Record<string, GroupedRSVP> = {};
         items.forEach((c) => {
-          // Fallback if created_at is missing for old records
-          const timeKey = c.created_at || "old_record"; 
-          const key = `${c.guest_name}_${timeKey}`;
+          // Normalize name for grouping to prevent case-sensitive duplicates
+          const key = c.guest_name.trim().toLowerCase(); 
           if (!grouped[key]) {
             grouped[key] = {
               id: key,
-              guest_name: c.guest_name,
+              guest_name: c.guest_name, // Preserve original casing
               items: [],
+              // API returns DESC, so the first item we see has the most recent timestamp & status
               created_at: c.created_at || new Date().toISOString(),
               is_coming: c.is_coming !== false // Default to true if missing
             };
