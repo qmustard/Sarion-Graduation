@@ -44,7 +44,7 @@ export default function SarionGraduation() {
 
   const fetchItems = async () => {
     try {
-      const res = await fetch("/api/items");
+      const res = await fetch(`/api/items?_t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         const items: ClaimRecord[] = data.items || [];
