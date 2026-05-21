@@ -166,8 +166,16 @@ export default function SarionGraduation() {
   const activelyClaimedItems = claimedItems.filter(c => c.is_coming !== false);
 
   return (
-    <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30">
-      <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30 overflow-hidden relative">
+      
+      {/* Running Graduation Character */}
+      <div className="fixed bottom-10 z-0 pointer-events-none opacity-40 animate-runner flex items-center justify-center w-full">
+        <div className="text-6xl animate-bounce-run drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]">
+          👨‍🎓💨
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
         
         {/* Left Column: Form & Selection */}
         <div className="lg:col-span-7 relative w-full overflow-hidden rounded-3xl bg-[#111827] border border-white/10 shadow-2xl">
