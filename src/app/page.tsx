@@ -41,6 +41,10 @@ export default function SarionGraduation() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  
+  // Event Config State
+  const [eventTime, setEventTime] = useState("");
+  const [locationAddress, setLocationAddress] = useState("");
 
   const fetchItems = async () => {
     try {
@@ -75,8 +79,17 @@ export default function SarionGraduation() {
 
         setGroupedRSVPs(sortedGroups);
       }
+      // Fetch config concurrently
+      const configRes = await fetch(`/api/config?_t=${Date.now()}`);
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData.config) {
+          setEventTime(configData.config.event_time || "");
+          setLocationAddress(configData.config.location_address || "");
+        }
+      }
     } catch (e) {
-      console.error("Failed to fetch claimed items", e);
+      console.error("Failed to fetch data", e);
     } finally {
       setLoading(false);
     }
@@ -269,18 +282,49 @@ export default function SarionGraduation() {
         <div className="lg:col-span-5 flex flex-col h-full max-h-[90vh]">
           
           {/* Location & Time Banner */}
-          <div className="mb-8 p-5 rounded-3xl bg-gradient-to-br from-yellow-500/10 to-transparent border border-yellow-500/20 shadow-[0_0_30px_rgba(234,179,8,0.05)] backdrop-blur-md flex items-center gap-5">
-            <div className="bg-yellow-500/20 p-3 rounded-full shadow-inner border border-yellow-500/30">
-              <svg className="w-7 h-7 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+          {locationAddress ? (
+            <a 
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationAddress)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-8 p-5 rounded-3xl bg-gradient-to-br from-yellow-500/10 to-transparent border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] backdrop-blur-md flex items-center justify-between gap-4 group hover:bg-yellow-500/20 transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-5">
+                <div className="bg-yellow-500/20 p-3 rounded-full shadow-[0_0_15px_rgba(234,179,8,0.3)] border border-yellow-500/50 group-hover:scale-110 transition-transform">
+                  <svg className="w-7 h-7 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-yellow-400 tracking-wide uppercase">
+                    {eventTime || "Event Location"}
+                  </h3>
+                  <p className="text-sm text-white/80 font-medium mt-1 group-hover:text-white transition-colors line-clamp-1">
+                    {locationAddress}
+                  </p>
+                </div>
+              </div>
+              <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-white/5 border border-white/10 group-hover:bg-yellow-500 group-hover:border-yellow-400 transition-colors">
+                <svg className="w-5 h-5 text-white/50 group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </a>
+          ) : (
+            <div className="mb-8 p-5 rounded-3xl bg-gradient-to-br from-yellow-500/5 to-transparent border border-yellow-500/10 shadow-[0_0_30px_rgba(234,179,8,0.02)] backdrop-blur-md flex items-center gap-5">
+              <div className="bg-yellow-500/10 p-3 rounded-full shadow-inner border border-yellow-500/20">
+                <svg className="w-7 h-7 text-yellow-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-extrabold text-lg text-yellow-400/80 tracking-wide uppercase">Location & Time</h3>
+                <p className="text-sm text-white/40 font-medium mt-1">To be announced soon. Keep an eye out!</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-extrabold text-lg text-yellow-400 tracking-wide uppercase">Location & Time</h3>
-              <p className="text-sm text-white/60 font-medium mt-1">To be announced soon. Keep an eye out!</p>
-            </div>
-          </div>
+          )}
 
           <div className="flex items-center justify-between mb-6 px-2">
             <h2 className="text-2xl font-bold text-white flex items-center gap-3">
