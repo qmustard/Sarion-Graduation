@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, guest_name, items });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to process claim:", err);
     return NextResponse.json({ error: 'Failed to process request.' }, { status: 500 });
   }

@@ -83,6 +83,7 @@ export default function SarionGraduation() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchItems();
     const interval = setInterval(fetchItems, 5000);
     return () => clearInterval(interval);
@@ -169,7 +170,7 @@ export default function SarionGraduation() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/40 to-transparent"></div>
             <div className="absolute bottom-6 left-8 right-8">
               <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
-                Sarion's Graduation Party
+                Sarion&apos;s Graduation Party
               </h1>
               <p className="text-xl text-yellow-400 mt-2 font-medium drop-shadow-md">What are you bringing?</p>
             </div>
@@ -266,6 +267,21 @@ export default function SarionGraduation() {
 
         {/* Right Column: Live Feed */}
         <div className="lg:col-span-5 flex flex-col h-full max-h-[90vh]">
+          
+          {/* Location & Time Banner */}
+          <div className="mb-8 p-5 rounded-3xl bg-gradient-to-br from-yellow-500/10 to-transparent border border-yellow-500/20 shadow-[0_0_30px_rgba(234,179,8,0.05)] backdrop-blur-md flex items-center gap-5">
+            <div className="bg-yellow-500/20 p-3 rounded-full shadow-inner border border-yellow-500/30">
+              <svg className="w-7 h-7 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-extrabold text-lg text-yellow-400 tracking-wide uppercase">Location & Time</h3>
+              <p className="text-sm text-white/60 font-medium mt-1">To be announced soon. Keep an eye out!</p>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between mb-6 px-2">
             <h2 className="text-2xl font-bold text-white flex items-center gap-3">
               <span className="relative flex h-3 w-3">
@@ -287,7 +303,7 @@ export default function SarionGraduation() {
               let timeString = "";
               try {
                 timeString = formatDistanceToNow(new Date(rsvp.created_at), { addSuffix: true });
-              } catch (e) {
+              } catch (_) {
                 timeString = "Recently";
               }
 
