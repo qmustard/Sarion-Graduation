@@ -175,20 +175,33 @@ export default function SarionGraduation() {
         </div>
       </div>
 
-      {/* Floating Baby Picture on the Right */}
-      <div className="fixed top-1/2 right-4 lg:right-12 -translate-y-1/2 z-0 pointer-events-none drop-shadow-[0_0_30px_rgba(0,0,0,1)]">
-        <div className="relative w-48 h-64 md:w-64 md:h-80 lg:w-96 lg:h-[30rem] rounded-2xl overflow-hidden border-4 border-white/10 rotate-3">
+      {/* Floating Baby Picture on the Right (Desktop Only) */}
+      <div className="hidden lg:block fixed top-1/2 right-12 -translate-y-1/2 z-0 pointer-events-none drop-shadow-[0_0_30px_rgba(0,0,0,1)]">
+        <div className="relative lg:w-96 lg:h-[30rem] rounded-2xl overflow-hidden border-4 border-white/10 rotate-3">
           <Image 
             src="/background.png" 
             alt="Baby Football" 
             fill
-            className="object-contain bg-black/50 backdrop-blur-md"
+            className="object-cover bg-black/50 backdrop-blur-md"
           />
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
         
+        {/* Mobile-Only Baby Picture (At the very top) */}
+        <div className="block lg:hidden w-full flex justify-center mt-4 mb-2">
+          <div className="relative w-56 h-72 rounded-2xl overflow-hidden border-4 border-white/20 rotate-2 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+            <Image 
+              src="/background.png" 
+              alt="Baby Football" 
+              fill
+              className="object-cover bg-black/50"
+              priority
+            />
+          </div>
+        </div>
+
         {/* Left Column: Form & Selection */}
         <div className="lg:col-span-7 relative w-full overflow-hidden rounded-3xl bg-[#111827] border border-white/10 shadow-2xl">
           {/* Banner Image */}
