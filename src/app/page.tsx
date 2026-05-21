@@ -74,8 +74,8 @@ export default function SarionGraduation() {
       if (configRes.ok) {
         const configData = await configRes.json();
         if (configData.config) {
-          setEventTime(configData.config.event_time || "");
-          setLocationAddress(configData.config.location_address || "");
+          setEventTime(configData.config.event_time || "This Sunday from 3:00 PM - 8:00 PM");
+          setLocationAddress(configData.config.location_address || "6342 W Valencia Drive");
           if (configData.config.available_items && configData.config.available_items.length > 0) {
             setAvailableItems(configData.config.available_items);
           } else {
@@ -166,14 +166,10 @@ export default function SarionGraduation() {
   const activelyClaimedItems = claimedItems.filter(c => c.is_coming !== false);
 
   return (
-    <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30 overflow-hidden relative">
+    <div className="min-h-screen bg-[url('/background.png')] bg-cover bg-center bg-fixed text-white font-sans selection:bg-yellow-500/30 overflow-hidden relative">
       
-      {/* Running Graduation Character (Massive Background) */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.07] animate-runner flex items-center justify-center">
-        <div className="text-[60vw] leading-none animate-bounce-run drop-shadow-[0_0_50px_rgba(234,179,8,1)]">
-          👨‍🎓💨
-        </div>
-      </div>
+      {/* Dark Overlay for Readability */}
+      <div className="absolute inset-0 bg-[#0b1021]/80 backdrop-blur-sm z-0"></div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
         
@@ -191,7 +187,7 @@ export default function SarionGraduation() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/40 to-transparent"></div>
             <div className="absolute bottom-6 left-8 right-8">
               <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
-                Sarion&apos;s Graduation Party
+                Pizza Graduation Party 🎓
               </h1>
               <p className="text-xl text-yellow-400 mt-2 font-medium drop-shadow-md">What are you bringing?</p>
             </div>
