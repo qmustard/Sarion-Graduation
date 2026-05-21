@@ -166,10 +166,19 @@ export default function SarionGraduation() {
   const activelyClaimedItems = claimedItems.filter(c => c.is_coming !== false);
 
   return (
-    <div className="min-h-screen bg-[url('/background.png')] bg-cover bg-center bg-fixed text-white font-sans selection:bg-yellow-500/30 overflow-hidden relative">
+    <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30 overflow-hidden relative">
       
-      {/* Dark Overlay for Readability */}
-      <div className="absolute inset-0 bg-[#0b1021]/80 backdrop-blur-sm z-0"></div>
+      {/* Floating Baby Picture on the Right */}
+      <div className="fixed top-1/2 right-4 lg:right-12 -translate-y-1/2 z-0 pointer-events-none drop-shadow-[0_0_30px_rgba(0,0,0,1)]">
+        <div className="relative w-48 h-64 md:w-64 md:h-80 lg:w-96 lg:h-[30rem] rounded-2xl overflow-hidden border-4 border-white/10 rotate-3">
+          <Image 
+            src="/background.png" 
+            alt="Baby Football" 
+            fill
+            className="object-contain bg-black/50 backdrop-blur-md"
+          />
+        </div>
+      </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
         
