@@ -171,6 +171,26 @@ export default function AdminPage() {
     });
   };
 
+  const moveItemUp = (index: number) => {
+    if (index === 0) return;
+    setAvailableItems(prev => {
+      const copy = [...prev];
+      [copy[index - 1], copy[index]] = [copy[index], copy[index - 1]];
+      return copy;
+    });
+    setConfigMessage("List reordered. Remember to click Save Configuration!");
+  };
+
+  const moveItemDown = (index: number) => {
+    if (index === availableItems.length - 1) return;
+    setAvailableItems(prev => {
+      const copy = [...prev];
+      [copy[index], copy[index + 1]] = [copy[index + 1], copy[index]];
+      return copy;
+    });
+    setConfigMessage("List reordered. Remember to click Save Configuration!");
+  };
+
   const handleDeleteGuest = async (guest_name: string) => {
     if (!confirm(`Are you sure you want to completely delete ${guest_name}'s RSVP? This cannot be undone.`)) {
       return;
@@ -346,15 +366,37 @@ export default function AdminPage() {
                     onChange={(e) => handleUpdateItem(index, e.target.value)}
                     className="flex-1 bg-transparent border-none outline-none text-white font-medium"
                   />
-                  <button 
-                    onClick={() => handleRemoveItem(index)}
-                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
-                    title="Remove item"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => moveItemUp(index)}
+                      disabled={index === 0}
+                      className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                      title="Move up"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => moveItemDown(index)}
+                      disabled={index === availableItems.length - 1}
+                      className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                      title="Move down"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => handleRemoveItem(index)}
+                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors ml-2"
+                      title="Remove item"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
               {availableItems.length === 0 && (
