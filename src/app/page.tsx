@@ -168,6 +168,13 @@ export default function SarionGraduation() {
   return (
     <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30 overflow-hidden relative">
       
+      {/* Running Graduation Character (Background) */}
+      <div className="fixed bottom-12 z-0 pointer-events-none opacity-20 animate-runner flex items-center justify-center w-full">
+        <div className="text-8xl animate-bounce-run drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]">
+          👨‍🎓💨
+        </div>
+      </div>
+
       {/* Floating Baby Picture on the Right */}
       <div className="fixed top-1/2 right-4 lg:right-12 -translate-y-1/2 z-0 pointer-events-none drop-shadow-[0_0_30px_rgba(0,0,0,1)]">
         <div className="relative w-48 h-64 md:w-64 md:h-80 lg:w-96 lg:h-[30rem] rounded-2xl overflow-hidden border-4 border-white/10 rotate-3">
