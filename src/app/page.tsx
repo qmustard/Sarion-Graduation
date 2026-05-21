@@ -5,18 +5,7 @@ import Image from "next/image";
 import confetti from "canvas-confetti";
 import { formatDistanceToNow } from "date-fns";
 
-const standardItems = [
-  "Burgers & Buns",
-  "Hot Dogs & Buns",
-  "Cases of Soda",
-  "Cases of Water",
-  "Potato Chips",
-  "Tortilla Chips & Salsa",
-  "Paper Plates & Napkins",
-  "Plastic Cups",
-  "Dessert / Cake",
-  "Salad / Veggie Tray",
-];
+// Dynamic items will be fetched from config
 
 type ClaimRecord = {
   item: string;
@@ -45,6 +34,7 @@ export default function SarionGraduation() {
   // Event Config State
   const [eventTime, setEventTime] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
+  const [availableItems, setAvailableItems] = useState<string[]>([]);
 
   const fetchItems = async () => {
     try {
@@ -86,6 +76,16 @@ export default function SarionGraduation() {
         if (configData.config) {
           setEventTime(configData.config.event_time || "");
           setLocationAddress(configData.config.location_address || "");
+          if (configData.config.available_items && configData.config.available_items.length > 0) {
+            setAvailableItems(configData.config.available_items);
+          } else {
+            // Fallback if empty in DB
+            setAvailableItems([
+              "Burgers & Buns", "Hot Dogs & Buns", "Cases of Soda", "Cases of Water", 
+              "Potato Chips", "Tortilla Chips & Salsa", "Paper Plates & Napkins", 
+              "Plastic Cups", "Dessert / Cake", "Salad / Veggie Tray"
+            ]);
+          }
         }
       }
     } catch (e) {
@@ -168,9 +168,9 @@ export default function SarionGraduation() {
   return (
     <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30 overflow-hidden relative">
       
-      {/* Running Graduation Character */}
-      <div className="fixed bottom-10 z-0 pointer-events-none opacity-40 animate-runner flex items-center justify-center w-full">
-        <div className="text-6xl animate-bounce-run drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]">
+      {/* Running Graduation Character (Massive Background) */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.07] animate-runner flex items-center justify-center">
+        <div className="text-[60vw] leading-none animate-bounce-run drop-shadow-[0_0_50px_rgba(234,179,8,1)]">
           👨‍🎓💨
         </div>
       </div>
@@ -221,7 +221,7 @@ export default function SarionGraduation() {
                 <div className="flex justify-between items-end">
                   <label className="text-sm font-semibold text-white/70 uppercase tracking-wider">Select Items to Bring</label>
                   <span className="text-xs text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full font-medium">
-                    {activelyClaimedItems.length} / {standardItems.length} Claimed
+                    {activelyClaimedItems.length} / {availableItems.length} Claimed
                   </span>
                 </div>
 
@@ -229,7 +229,7 @@ export default function SarionGraduation() {
                   <div className="text-white/50 animate-pulse py-8 text-center bg-white/5 rounded-xl">Loading the checklist...</div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {standardItems.map((item) => {
+                    {availableItems.map((item) => {
                       const claimRecord = activelyClaimedItems.find(c => c.item === item);
                       const isClaimed = !!claimRecord;
                       const isSelected = selectedItems.includes(item);

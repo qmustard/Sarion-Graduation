@@ -4,19 +4,6 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 
-const standardItems = [
-  "Burgers & Buns",
-  "Hot Dogs & Buns",
-  "Cases of Soda",
-  "Cases of Water",
-  "Potato Chips",
-  "Tortilla Chips & Salsa",
-  "Paper Plates & Napkins",
-  "Plastic Cups",
-  "Dessert / Cake",
-  "Salad / Veggie Tray",
-];
-
 type ClaimRecord = {
   item: string;
   guest_name: string;
@@ -38,14 +25,20 @@ export default function AdminPage() {
   const [pinError, setPinError] = useState(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'config' | 'guests'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'guests' | 'items'>('config');
 
   // Config State
   const [eventTime, setEventTime] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
+  const [availableItems, setAvailableItems] = useState<string[]>([
+    "Burgers & Buns", "Hot Dogs & Buns", "Cases of Soda", "Cases of Water", 
+    "Potato Chips", "Tortilla Chips & Salsa", "Paper Plates & Napkins", 
+    "Plastic Cups", "Dessert / Cake", "Salad / Veggie Tray"
+  ]);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [configMessage, setConfigMessage] = useState("");
+  const [newItemName, setNewItemName] = useState("");
 
   // Guests State
   const [groupedRSVPs, setGroupedRSVPs] = useState<GroupedRSVP[]>([]);
@@ -79,6 +72,9 @@ export default function AdminPage() {
         if (data.config) {
           setEventTime(data.config.event_time || "");
           setLocationAddress(data.config.location_address || "");
+          if (data.config.available_items && data.config.available_items.length > 0) {
+            setAvailableItems(data.config.available_items);
+          }
         }
       }
     } catch (e) {
@@ -134,11 +130,15 @@ export default function AdminPage() {
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_time: eventTime, location_address: locationAddress }),
+        body: JSON.stringify({ 
+          event_time: eventTime, 
+          location_address: locationAddress,
+          available_items: availableItems 
+        }),
       });
       
       if (res.ok) {
-        setConfigMessage("Successfully updated event configuration!");
+        setConfigMessage("Successfully updated configuration!");
       } else {
         setConfigMessage("Error saving configuration.");
       }
@@ -148,6 +148,27 @@ export default function AdminPage() {
     } finally {
       setSavingConfig(false);
     }
+  };
+
+  const handleAddItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemName.trim()) return;
+    setAvailableItems(prev => [...prev, newItemName.trim()]);
+    setNewItemName("");
+    setConfigMessage("Item added. Remember to click Save Configuration!");
+  };
+
+  const handleRemoveItem = (indexToRemove: number) => {
+    setAvailableItems(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    setConfigMessage("Item removed. Remember to click Save Configuration!");
+  };
+
+  const handleUpdateItem = (index: number, newName: string) => {
+    setAvailableItems(prev => {
+      const copy = [...prev];
+      copy[index] = newName;
+      return copy;
+    });
   };
 
   const handleDeleteGuest = async (guest_name: string) => {
@@ -291,7 +312,85 @@ export default function AdminPage() {
           >
             Guest List
           </button>
+          <button
+            onClick={() => setActiveTab('items')}
+            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${
+              activeTab === 'items' 
+                ? 'bg-yellow-500 text-black shadow-md' 
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            Item Master List
+          </button>
         </div>
+
+        {/* Tab Content: Item Master List */}
+        {activeTab === 'items' && (
+          <div className="bg-[#111827] border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-8 relative mb-6">
+            <h2 className="text-xl font-bold text-white mb-2">Available Items</h2>
+            <p className="text-sm text-white/50 mb-6">Manage the master list of items guests can bring.</p>
+            
+            {configMessage && (
+              <div className={`p-4 mb-6 rounded-xl border font-medium ${configMessage.includes("Error") ? 'bg-red-500/20 border-red-500/50 text-red-200' : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'}`}>
+                {configMessage}
+              </div>
+            )}
+
+            <div className="space-y-3 mb-8 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {availableItems.map((item, index) => (
+                <div key={index} className="flex items-center gap-3 bg-white/5 border border-white/10 p-3 rounded-xl transition-all hover:bg-white/10">
+                  <span className="text-white/30 font-mono text-sm">{index + 1}.</span>
+                  <input 
+                    type="text" 
+                    value={item}
+                    onChange={(e) => handleUpdateItem(index, e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-white font-medium"
+                  />
+                  <button 
+                    onClick={() => handleRemoveItem(index)}
+                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                    title="Remove item"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              {availableItems.length === 0 && (
+                <p className="text-white/40 text-center py-4">No items available.</p>
+              )}
+            </div>
+
+            <form onSubmit={handleAddItem} className="flex gap-3 mb-6">
+              <input 
+                type="text" 
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                placeholder="Add a new item..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
+              />
+              <button 
+                type="submit" 
+                disabled={!newItemName.trim()}
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 disabled:bg-white/5 text-white disabled:text-white/30 font-bold rounded-xl border border-white/20 transition-all"
+              >
+                Add Item
+              </button>
+            </form>
+
+            <button 
+              onClick={handleSaveConfig}
+              disabled={savingConfig}
+              className="w-full relative overflow-hidden group bg-gradient-to-r from-yellow-600 to-yellow-400 disabled:from-white/10 disabled:to-white/5 disabled:text-white/30 text-black font-extrabold text-lg py-5 rounded-2xl shadow-[0_0_20px_rgba(234,179,8,0.15)] hover:shadow-[0_0_40px_rgba(234,179,8,0.3)] transition-all"
+            >
+              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-out disabled:hidden"></div>
+              <span className="relative z-10">
+                {savingConfig ? 'Saving...' : 'Save Configuration'}
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Tab Content: Event Config */}
         {activeTab === 'config' && (
@@ -450,7 +549,7 @@ export default function AdminPage() {
                 <div>
                   <label className="text-sm font-semibold text-white/70 uppercase tracking-wider block mb-3">Assign Items</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {standardItems.map((item) => {
+                    {availableItems.map((item) => {
                       const claimRecord = activelyClaimedItems.find(c => c.item === item);
                       const isClaimed = !!claimRecord;
                       const isSelected = newSelectedItems.includes(item);
