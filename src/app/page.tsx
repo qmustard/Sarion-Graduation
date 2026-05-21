@@ -22,6 +22,7 @@ type ClaimRecord = {
   item: string;
   guest_name: string;
   created_at: string;
+  is_coming: boolean;
 };
 
 type GroupedRSVP = {
@@ -29,6 +30,7 @@ type GroupedRSVP = {
   guest_name: string;
   items: string[];
   created_at: string;
+  is_coming: boolean;
 };
 
 export default function SarionGraduation() {
@@ -60,6 +62,7 @@ export default function SarionGraduation() {
               guest_name: c.guest_name,
               items: [],
               created_at: c.created_at || new Date().toISOString(),
+              is_coming: c.is_coming !== false // Default to true if missing
             };
           }
           grouped[key].items.push(c.item);
@@ -89,6 +92,26 @@ export default function SarionGraduation() {
     setSelectedItems((prev) => 
       prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
     );
+  };
+
+  const toggleRSVPStatus = async (guest_name: string, current_status: boolean) => {
+    const new_status = !current_status;
+    
+    // Optimistic UI update
+    setGroupedRSVPs(prev => prev.map(r => r.guest_name === guest_name ? { ...r, is_coming: new_status } : r));
+    setClaimedItems(prev => prev.map(c => c.guest_name === guest_name ? { ...c, is_coming: new_status } : c));
+    
+    try {
+      await fetch('/api/rsvp', {
+        method: 'PATCH',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guest_name, is_coming: new_status }),
+      });
+      // Silent success, polling will keep it in sync
+    } catch (e) {
+      console.error("Failed to update status", e);
+      fetchItems(); // Revert on failure
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,6 +147,9 @@ export default function SarionGraduation() {
       setSubmitting(false);
     }
   };
+
+  // Only count items as claimed if the guest is actually coming
+  const activelyClaimedItems = claimedItems.filter(c => c.is_coming !== false);
 
   return (
     <div className="min-h-screen bg-[#0b1021] text-white font-sans selection:bg-yellow-500/30">
@@ -173,7 +199,7 @@ export default function SarionGraduation() {
                 <div className="flex justify-between items-end">
                   <label className="text-sm font-semibold text-white/70 uppercase tracking-wider">Select Items to Bring</label>
                   <span className="text-xs text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full font-medium">
-                    {claimedItems.length} / {standardItems.length} Claimed
+                    {activelyClaimedItems.length} / {standardItems.length} Claimed
                   </span>
                 </div>
 
@@ -182,7 +208,7 @@ export default function SarionGraduation() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {standardItems.map((item) => {
-                      const claimRecord = claimedItems.find(c => c.item === item);
+                      const claimRecord = activelyClaimedItems.find(c => c.item === item);
                       const isClaimed = !!claimRecord;
                       const isSelected = selectedItems.includes(item);
 
@@ -265,6 +291,7 @@ export default function SarionGraduation() {
                 timeString = "Recently";
               }
 
+              const isComing = rsvp.is_coming;
               // Animate only the newest one subtly
               const isNewest = index === 0 && new Date().getTime() - new Date(rsvp.created_at).getTime() < 10000;
 
@@ -273,18 +300,48 @@ export default function SarionGraduation() {
                   key={rsvp.id}
                   className={`
                     p-5 rounded-2xl backdrop-blur-md transition-all duration-500
-                    ${isNewest ? 'bg-yellow-500/10 border border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.15)]' : 'bg-white/5 border border-white/10'}
+                    ${!isComing 
+                      ? 'bg-red-900/10 border border-red-500/30 opacity-75' 
+                      : isNewest 
+                        ? 'bg-yellow-500/10 border border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.15)]' 
+                        : 'bg-white/5 border border-white/10'
+                    }
                   `}
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-bold text-lg text-white">{rsvp.guest_name}</h3>
-                    <span className="text-xs font-medium text-white/40 bg-black/20 px-2 py-1 rounded-lg">
-                      {timeString}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <h3 className={`font-bold text-lg ${!isComing ? 'text-red-200/70' : 'text-white'}`}>
+                        {rsvp.guest_name}
+                      </h3>
+                      <span className="text-xs font-medium text-white/40">
+                        {timeString}
+                      </span>
+                    </div>
+                    
+                    <button
+                      onClick={() => toggleRSVPStatus(rsvp.guest_name, isComing)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-md
+                        ${isComing 
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
+                          : 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                        }`}
+                    >
+                      {isComing ? 'Coming' : 'Not Coming'}
+                    </button>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+
+                  <div className="flex flex-wrap gap-2 mt-4">
                     {rsvp.items.map(item => (
-                      <span key={item} className={`text-sm px-3 py-1 rounded-full ${isNewest ? 'bg-yellow-500/20 text-yellow-200' : 'bg-white/10 text-white/80'}`}>
+                      <span 
+                        key={item} 
+                        className={`text-sm px-3 py-1 rounded-full transition-all duration-300
+                          ${!isComing 
+                            ? 'bg-red-900/30 text-red-200/50 line-through' 
+                            : isNewest 
+                              ? 'bg-yellow-500/20 text-yellow-200' 
+                              : 'bg-white/10 text-white/80'
+                          }`}
+                      >
                         {item}
                       </span>
                     ))}
