@@ -57,27 +57,16 @@ export default function FlyerPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="w-full flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="w-full flex justify-center items-center mt-4">
           
-          {/* Maps Button */}
-          <a 
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full sm:w-1/2 relative overflow-hidden group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 transition-all hover:border-yellow-500/50 hover:shadow-[0_0_30px_rgba(234,179,8,0.2)]"
-          >
-            <span className="text-3xl">📍</span>
-            <span className="text-white font-bold tracking-wider uppercase text-sm">Get Directions</span>
-          </a>
-
-          {/* RSVP Button */}
+          {/* Main RSVP Button */}
           <Link 
             href="/"
-            className="w-full sm:w-1/2 relative overflow-hidden group bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_40px_rgba(234,179,8,0.5)] transition-all"
+            className="w-full sm:w-2/3 md:w-1/2 relative overflow-hidden group bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full p-4 flex flex-col items-center justify-center gap-1 shadow-[0_0_30px_rgba(234,179,8,0.4)] hover:shadow-[0_0_50px_rgba(234,179,8,0.7)] hover:scale-105 transition-all duration-300"
           >
-            <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></div>
-            <span className="relative z-10 text-3xl">🍕</span>
-            <span className="relative z-10 text-black font-extrabold tracking-wider uppercase text-sm drop-shadow-sm">What are you bringing?</span>
+            <div className="absolute inset-0 bg-white/30 transform -skew-x-12 -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-out"></div>
+            <span className="relative z-10 text-black font-extrabold tracking-[0.2em] uppercase text-xl drop-shadow-md">RSVP</span>
+            <span className="relative z-10 text-black/80 font-bold text-xs uppercase tracking-wider">Click here to confirm</span>
           </Link>
 
         </div>

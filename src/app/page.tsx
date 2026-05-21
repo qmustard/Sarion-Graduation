@@ -205,20 +205,22 @@ export default function SarionGraduation() {
         {/* Left Column: Form & Selection */}
         <div className="lg:col-span-7 relative w-full overflow-hidden rounded-3xl bg-[#111827] border border-white/10 shadow-2xl">
           {/* Banner Image */}
-          <div className="relative w-full h-64 md:h-80 overflow-hidden border-b border-white/10">
-            <Image 
-              src="/sarion_graduation_banner.png" 
-              alt="Sarion Graduation" 
-              fill
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/40 to-transparent"></div>
-            <div className="absolute bottom-6 left-8 right-8">
-              <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
-                Pizza Graduation Party 🎓
+          {/* Animated Premium Banner */}
+          <div className="relative w-full h-48 md:h-64 overflow-hidden bg-[#0b1021] flex items-center justify-center border-b border-white/10">
+            {/* Animated Glowing Orbs */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+              <div className="absolute -top-20 -left-20 w-64 h-64 bg-yellow-500/40 blur-[80px] rounded-full mix-blend-screen animate-pulse"></div>
+              <div className="absolute bottom-[-20%] right-[-10%] w-80 h-80 bg-blue-600/30 blur-[100px] rounded-full mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-900/20 via-[#0b1021]/80 to-[#0b1021]"></div>
+            </div>
+            
+            <div className="absolute inset-0 bg-gradient-to-t from-[#111827] to-transparent z-10"></div>
+            
+            <div className="relative z-20 text-center flex flex-col items-center justify-center w-full h-full px-8 pt-6">
+              <span className="text-6xl mb-4 drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]">🍕</span>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 tracking-tight drop-shadow-lg">
+                What are you bringing?
               </h1>
-              <p className="text-xl text-yellow-400 mt-2 font-medium drop-shadow-md">What are you bringing?</p>
             </div>
           </div>
 
