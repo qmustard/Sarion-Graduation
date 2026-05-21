@@ -303,7 +303,7 @@ export default function SarionGraduation() {
               let timeString = "";
               try {
                 timeString = formatDistanceToNow(new Date(rsvp.created_at), { addSuffix: true });
-              } catch (_) {
+              } catch {
                 timeString = "Recently";
               }
 

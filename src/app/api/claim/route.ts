@@ -4,6 +4,7 @@ import * as nodemailer from 'nodemailer';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
 });
 
 const transporter = nodemailer.createTransport({
