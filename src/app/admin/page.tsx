@@ -2,23 +2,68 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { formatDistanceToNow } from "date-fns";
+
+const standardItems = [
+  "Burgers & Buns",
+  "Hot Dogs & Buns",
+  "Cases of Soda",
+  "Cases of Water",
+  "Potato Chips",
+  "Tortilla Chips & Salsa",
+  "Paper Plates & Napkins",
+  "Plastic Cups",
+  "Dessert / Cake",
+  "Salad / Veggie Tray",
+];
+
+type ClaimRecord = {
+  item: string;
+  guest_name: string;
+  created_at: string;
+  is_coming: boolean;
+};
+
+type GroupedRSVP = {
+  id: string;
+  guest_name: string;
+  items: string[];
+  created_at: string;
+  is_coming: boolean;
+};
 
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
 
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'config' | 'guests'>('config');
+
+  // Config State
   const [eventTime, setEventTime] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configMessage, setConfigMessage] = useState("");
+
+  // Guests State
+  const [groupedRSVPs, setGroupedRSVPs] = useState<GroupedRSVP[]>([]);
+  const [claimedItems, setClaimedItems] = useState<ClaimRecord[]>([]);
+  const [loadingGuests, setLoadingGuests] = useState(false);
+  
+  // Manual Add State
+  const [newGuestName, setNewGuestName] = useState("");
+  const [newSelectedItems, setNewSelectedItems] = useState<string[]>([]);
+  const [addingGuest, setAddingGuest] = useState(false);
+  const [guestMessage, setGuestMessage] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === "963" || pin === "137") { // Simple protection
+    if (pin === "963" || pin === "137") {
       setAuthenticated(true);
       fetchConfig();
+      fetchGuests();
     } else {
       setPinError(true);
       setPin("");
@@ -26,7 +71,7 @@ export default function AdminPage() {
   };
 
   const fetchConfig = async () => {
-    setLoading(true);
+    setLoadingConfig(true);
     try {
       const res = await fetch(`/api/config?_t=${Date.now()}`);
       if (res.ok) {
@@ -39,14 +84,51 @@ export default function AdminPage() {
     } catch (e) {
       console.error("Failed to fetch config", e);
     } finally {
-      setLoading(false);
+      setLoadingConfig(false);
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const fetchGuests = async () => {
+    setLoadingGuests(true);
+    try {
+      const res = await fetch(`/api/items?_t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const items: ClaimRecord[] = data.items || [];
+        setClaimedItems(items);
+
+        const grouped: Record<string, GroupedRSVP> = {};
+        items.forEach((c) => {
+          const key = c.guest_name.trim().toLowerCase(); 
+          if (!grouped[key]) {
+            grouped[key] = {
+              id: key,
+              guest_name: c.guest_name,
+              items: [],
+              created_at: c.created_at || new Date().toISOString(),
+              is_coming: c.is_coming !== false
+            };
+          }
+          grouped[key].items.push(c.item);
+        });
+
+        const sortedGroups = Object.values(grouped).sort((a, b) => {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        setGroupedRSVPs(sortedGroups);
+      }
+    } catch (e) {
+      console.error("Failed to fetch guests", e);
+    } finally {
+      setLoadingGuests(false);
+    }
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    setMessage("");
+    setSavingConfig(true);
+    setConfigMessage("");
     
     try {
       const res = await fetch("/api/config", {
@@ -56,16 +138,75 @@ export default function AdminPage() {
       });
       
       if (res.ok) {
-        setMessage("Successfully updated event configuration!");
+        setConfigMessage("Successfully updated event configuration!");
       } else {
-        setMessage("Error saving configuration.");
+        setConfigMessage("Error saving configuration.");
       }
     } catch (e) {
       console.error("Failed to save", e);
-      setMessage("An unexpected error occurred.");
+      setConfigMessage("An unexpected error occurred.");
     } finally {
-      setSaving(false);
+      setSavingConfig(false);
     }
+  };
+
+  const handleDeleteGuest = async (guest_name: string) => {
+    if (!confirm(`Are you sure you want to completely delete ${guest_name}'s RSVP? This cannot be undone.`)) {
+      return;
+    }
+    
+    // Optimistic delete
+    setGroupedRSVPs(prev => prev.filter(r => r.guest_name !== guest_name));
+    setClaimedItems(prev => prev.filter(c => c.guest_name !== guest_name));
+
+    try {
+      const res = await fetch('/api/rsvp', {
+        method: 'DELETE',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guest_name }),
+      });
+      if (!res.ok) {
+        fetchGuests(); // Revert on failure
+      }
+    } catch (e) {
+      console.error("Failed to delete", e);
+      fetchGuests();
+    }
+  };
+
+  const handleAddGuest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGuestName || newSelectedItems.length === 0) return;
+    
+    setAddingGuest(true);
+    setGuestMessage("");
+    
+    try {
+      const res = await fetch("/api/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guest_name: newGuestName, items: newSelectedItems }),
+      });
+      if (res.ok) {
+        setNewGuestName("");
+        setNewSelectedItems([]);
+        setGuestMessage("Guest successfully added.");
+        fetchGuests();
+      } else {
+        setGuestMessage("Failed to add guest.");
+      }
+    } catch (e) {
+      console.error("Failed to add guest", e);
+      setGuestMessage("Unexpected error occurred.");
+    } finally {
+      setAddingGuest(false);
+    }
+  };
+
+  const toggleNewItem = (item: string) => {
+    setNewSelectedItems((prev) => 
+      prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
+    );
   };
 
   if (!authenticated) {
@@ -112,86 +253,251 @@ export default function AdminPage() {
     );
   }
 
+  const activelyClaimedItems = claimedItems.filter(c => c.is_coming !== false);
+
   return (
     <div className="min-h-screen bg-[#0b1021] text-white font-sans p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-extrabold flex items-center gap-3">
-            <span className="text-yellow-500">⚙</span> Event Configuration
+            <span className="text-yellow-500">⚙</span> Command Center
           </h1>
           <a href="/" className="text-sm font-medium text-white/50 hover:text-yellow-400 transition-colors">
             ← Back to Live Page
           </a>
         </div>
 
-        <div className="bg-[#111827] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none"></div>
-          
-          <div className="p-8 relative z-10">
-            {loading ? (
-              <div className="animate-pulse space-y-6">
-                <div className="h-12 bg-white/5 rounded-xl"></div>
-                <div className="h-12 bg-white/5 rounded-xl"></div>
+        {/* Tabs */}
+        <div className="flex space-x-2 mb-6 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${
+              activeTab === 'config' 
+                ? 'bg-yellow-500 text-black shadow-md' 
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            Event Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('guests')}
+            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${
+              activeTab === 'guests' 
+                ? 'bg-yellow-500 text-black shadow-md' 
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            Guest List
+          </button>
+        </div>
+
+        {/* Tab Content: Event Config */}
+        {activeTab === 'config' && (
+          <div className="bg-[#111827] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none"></div>
+            
+            <div className="p-8 relative z-10">
+              {loadingConfig ? (
+                <div className="animate-pulse space-y-6">
+                  <div className="h-12 bg-white/5 rounded-xl"></div>
+                  <div className="h-12 bg-white/5 rounded-xl"></div>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveConfig} className="space-y-8">
+                  
+                  {configMessage && (
+                    <div className={`p-4 rounded-xl border font-medium ${configMessage.includes("Error") ? 'bg-red-500/20 border-red-500/50 text-red-200' : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'}`}>
+                      {configMessage}
+                    </div>
+                  )}
+                  
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold text-white/70 uppercase tracking-wider flex items-center gap-2">
+                      <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Event Time
+                    </label>
+                    <input 
+                      type="text" 
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      placeholder="e.g., Saturday, June 12th @ 4:00 PM"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
+                    />
+                    <p className="text-xs text-white/40">This will be displayed on the Live RSVP page.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold text-white/70 uppercase tracking-wider flex items-center gap-2">
+                      <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Location Address
+                    </label>
+                    <input 
+                      type="text" 
+                      value={locationAddress}
+                      onChange={(e) => setLocationAddress(e.target.value)}
+                      placeholder="e.g., 123 Main St, City, ST 12345"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
+                    />
+                    <p className="text-xs text-white/40">If provided, this generates a clickable Google Maps link on the main page.</p>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={savingConfig}
+                    className="w-full relative overflow-hidden group bg-gradient-to-r from-yellow-600 to-yellow-400 disabled:from-white/10 disabled:to-white/5 disabled:text-white/30 text-black font-extrabold text-lg py-5 rounded-2xl shadow-[0_0_20px_rgba(234,179,8,0.15)] hover:shadow-[0_0_40px_rgba(234,179,8,0.3)] transition-all mt-4"
+                  >
+                    <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-out disabled:hidden"></div>
+                    <span className="relative z-10">
+                      {savingConfig ? 'Saving...' : 'Save Configuration'}
+                    </span>
+                  </button>
+                  
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content: Guests */}
+        {activeTab === 'guests' && (
+          <div className="space-y-6">
+            
+            {/* Live Guest List */}
+            <div className="bg-[#111827] border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">RSVP Roster</h2>
+              
+              {loadingGuests ? (
+                <div className="text-center py-8 text-white/40">Loading guests...</div>
+              ) : groupedRSVPs.length === 0 ? (
+                <div className="text-center py-8 text-white/40">No RSVPs yet.</div>
+              ) : (
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {groupedRSVPs.map(rsvp => {
+                    let timeString = "";
+                    try {
+                      timeString = formatDistanceToNow(new Date(rsvp.created_at), { addSuffix: true });
+                    } catch {
+                      timeString = "Recently";
+                    }
+
+                    return (
+                      <div key={rsvp.id} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-bold text-lg text-white">{rsvp.guest_name}</h3>
+                            {!rsvp.is_coming && (
+                              <span className="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-md font-medium border border-red-500/30">Not Coming</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {rsvp.items.map(item => (
+                              <span key={item} className={`text-xs px-2 py-1 rounded-md ${rsvp.is_coming ? 'bg-white/10 text-white/70' : 'bg-red-900/30 text-red-200/50 line-through'}`}>
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-xs text-white/30 mt-2">{timeString}</p>
+                        </div>
+                        
+                        <button
+                          onClick={() => handleDeleteGuest(rsvp.guest_name)}
+                          className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 hover:border-red-500/50 rounded-xl text-sm font-bold transition-all whitespace-nowrap shrink-0"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Admin Override: Add Guest */}
+            <div className="bg-[#111827] border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-6 relative">
+              <div className="absolute top-0 right-0 p-4">
+                <span className="bg-red-500/20 text-red-400 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider border border-red-500/30">
+                  Admin Override
+                </span>
               </div>
-            ) : (
-              <form onSubmit={handleSave} className="space-y-8">
-                
-                {message && (
-                  <div className={`p-4 rounded-xl border font-medium ${message.includes("Error") ? 'bg-red-500/20 border-red-500/50 text-red-200' : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'}`}>
-                    {message}
+              <h2 className="text-xl font-bold text-white mb-2">Manual Entry</h2>
+              <p className="text-sm text-white/50 mb-6">Force-add a guest and claim items directly.</p>
+              
+              <form onSubmit={handleAddGuest} className="space-y-6">
+                {guestMessage && (
+                  <div className={`p-4 rounded-xl border font-medium ${guestMessage.includes("Error") || guestMessage.includes("Failed") ? 'bg-red-500/20 border-red-500/50 text-red-200' : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'}`}>
+                    {guestMessage}
                   </div>
                 )}
                 
-                <div className="space-y-3">
-                  <label className="text-sm font-semibold text-white/70 uppercase tracking-wider flex items-center gap-2">
-                    <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Event Time
-                  </label>
+                <div>
+                  <label className="text-sm font-semibold text-white/70 uppercase tracking-wider block mb-2">Guest Name</label>
                   <input 
                     type="text" 
-                    value={eventTime}
-                    onChange={(e) => setEventTime(e.target.value)}
-                    placeholder="e.g., Saturday, June 12th @ 4:00 PM"
+                    value={newGuestName}
+                    onChange={(e) => setNewGuestName(e.target.value)}
+                    placeholder="Enter name..."
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
                   />
-                  <p className="text-xs text-white/40">This will be displayed on the Live RSVP page.</p>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-sm font-semibold text-white/70 uppercase tracking-wider flex items-center gap-2">
-                    <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Location Address
-                  </label>
-                  <input 
-                    type="text" 
-                    value={locationAddress}
-                    onChange={(e) => setLocationAddress(e.target.value)}
-                    placeholder="e.g., 123 Main St, City, ST 12345"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
-                  />
-                  <p className="text-xs text-white/40">If provided, this will generate a clickable Google Maps "Get Directions" link on the main page.</p>
+                <div>
+                  <label className="text-sm font-semibold text-white/70 uppercase tracking-wider block mb-3">Assign Items</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {standardItems.map((item) => {
+                      const claimRecord = activelyClaimedItems.find(c => c.item === item);
+                      const isClaimed = !!claimRecord;
+                      const isSelected = newSelectedItems.includes(item);
+
+                      return (
+                        <div 
+                          key={item}
+                          onClick={() => toggleNewItem(item)}
+                          className={`
+                            relative overflow-hidden rounded-xl border p-3 transition-all duration-300 text-sm
+                            ${isClaimed 
+                              ? 'bg-red-900/10 border-red-500/20 cursor-not-allowed opacity-50' 
+                              : isSelected 
+                                ? 'bg-yellow-500/20 border-yellow-500 cursor-pointer shadow-[0_0_15px_rgba(234,179,8,0.1)]'
+                                : 'bg-white/5 border-white/10 hover:border-white/30 cursor-pointer hover:bg-white/10'
+                            }
+                          `}
+                        >
+                          <div className="flex flex-col">
+                            <span className={`font-semibold ${isClaimed ? 'text-white/40 line-through' : 'text-white'}`}>
+                              {item}
+                            </span>
+                            {isClaimed && (
+                              <span className="text-xs text-red-400 mt-1 font-medium">
+                                Taken by {claimRecord.guest_name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <button 
                   type="submit" 
-                  disabled={saving}
-                  className="w-full relative overflow-hidden group bg-gradient-to-r from-yellow-600 to-yellow-400 disabled:from-white/10 disabled:to-white/5 disabled:text-white/30 text-black font-extrabold text-lg py-5 rounded-2xl shadow-[0_0_20px_rgba(234,179,8,0.15)] hover:shadow-[0_0_40px_rgba(234,179,8,0.3)] transition-all mt-4"
+                  disabled={!newGuestName || newSelectedItems.length === 0 || addingGuest}
+                  className="w-full bg-white/10 hover:bg-white/20 disabled:bg-white/5 text-white disabled:text-white/30 font-bold py-4 rounded-xl border border-white/20 disabled:border-white/5 transition-all"
                 >
-                  <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-out disabled:hidden"></div>
-                  <span className="relative z-10">
-                    {saving ? 'Saving...' : 'Save Configuration'}
-                  </span>
+                  {addingGuest ? 'Adding...' : 'Force Add Guest'}
                 </button>
-                
               </form>
-            )}
+            </div>
+            
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );

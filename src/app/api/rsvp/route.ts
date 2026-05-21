@@ -29,3 +29,25 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Failed to update request.' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { guest_name } = await req.json();
+
+    if (!guest_name) {
+      return NextResponse.json({ error: "guest_name is required" }, { status: 400 });
+    }
+
+    if (process.env.DATABASE_URL) {
+      await pool.query(
+        'DELETE FROM graduation_rsvp WHERE guest_name = $1',
+        [guest_name]
+      );
+    }
+    
+    return NextResponse.json({ success: true, guest_name });
+  } catch (err: unknown) {
+    console.error("Failed to delete rsvp:", err);
+    return NextResponse.json({ error: 'Failed to delete request.' }, { status: 500 });
+  }
+}
